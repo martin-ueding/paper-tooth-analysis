@@ -38,8 +38,11 @@ def mean_gradient_magnitude(patch: np.ndarray) -> float:
 
 
 def acf_2d(patch: np.ndarray) -> np.ndarray:
-    """2D autocorrelation, normalized so center is 1. Same shape as patch."""
-    c = signal.correlate(patch, patch, mode="same")
+    """2D autocorrelation of fluctuations (demeaned), normalized so center is 1.
+    Demeaning ensures the ACF decays with the true texture scale; using the raw
+    image would mix in patch-size effects and inflate the correlation length."""
+    demeaned = patch - np.mean(patch)
+    c = signal.correlate(demeaned, demeaned, mode="same")
     center = c.max()
     if center <= 0:
         return c
