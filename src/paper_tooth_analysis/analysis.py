@@ -9,12 +9,13 @@ ACF_HALF_MAX = 0.5
 
 
 def load_patch(path: str, size: int = PATCH_DEFAULT) -> np.ndarray:
-    """Load image from path, take first channel, center-crop to size x size."""
+    """Load image from path, convert to grayscale if needed, center-crop to size x size."""
     from matplotlib.pyplot import imread
 
     img = imread(path)
     if img.ndim == 3:
-        img = img[:, :, 0]
+        r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
+        img = 0.299 * r + 0.587 * g + 0.114 * b
     h, w = img.shape
     top = (h - size) // 2
     left = (w - size) // 2
