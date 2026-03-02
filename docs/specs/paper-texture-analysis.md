@@ -25,7 +25,7 @@ Quantify paper "tooth" (depth/contrast) and coarseness (grain scale) from unifor
 
 | Output | Type | Description |
 |--------|------|-------------|
-| Summary table | CSV / stdout | One row per image: paper name (stem), `correlation_length_px`, `rms_contrast`, `mean_gradient`. Optional: `power_scale` if radial power spectrum is implemented. |
+| Summary table | CSV / ODS / stdout | One row per image: paper name (stem), `mean_intensity`, `rms_contrast`, `mean_gradient`, `correlation_length_px`, `acf_fwhm_px`, `power_scale_px`. |
 
 ---
 
@@ -33,9 +33,14 @@ Quantify paper "tooth" (depth/contrast) and coarseness (grain scale) from unifor
 
 ### Depth / tooth
 
+- **Mean intensity**  
+  - Definition: mean pixel value over the full patch (overall darkness/grayness; pairs with std).  
+  - Implementation: `np.mean(patch)`.  
+  - One scalar per image (typically 0–1 if image is 0–1).
+
 - **RMS contrast**  
   - Definition: standard deviation of pixel intensity over the full patch.  
-  - Implementation: `I.ravel().std()` (or `np.std(I)`).  
+  - Implementation: `np.std(patch)`.  
   - One scalar per image.
 
 - **Mean gradient magnitude**  
@@ -46,17 +51,22 @@ Quantify paper "tooth" (depth/contrast) and coarseness (grain scale) from unifor
 ### Coarseness
 
 - **Correlation length ξ (pixels)**  
-  - Definition: lag r at which the radially averaged autocorrelation function (ACF) drops to 1/e.  
-  - Steps:  
-    1. Compute 2D autocorrelation: correlate image with itself (e.g. `scipy.signal.correlate(I, I, mode='same')`).  
-    2. Normalize so ACF(0) = 1 (divide by central value or by `correlate(ones, ones)`).  
-    3. Radial average: from center `(cy, cx)`, bin by `r = sqrt((i-cy)^2 + (j-cx)^2)` (e.g. 1 px bins), average ACF in each bin.  
-    4. Correlation length: first r for which `ACF(r) ≤ 1/e` (interpolate if needed).  
-  - One scalar per image (in pixels).
+  - Definition: lag r at which the radially averaged ACF drops to 1/e.  
+  - Implementation: 2D ACF → radial average → first r with ACF(r) ≤ 1/e (interpolated).  
+  - One scalar per image.
 
-### Optional (not required for v0.1)
+- **ACF FWHM (pixels)**  
+  - Definition: full width at half maximum of the radial ACF (diameter of central peak).  
+  - Implementation: first r with ACF(r) ≤ 0.5 → FWHM = 2·r (interpolated).  
+  - One scalar per image; coarser texture → wider peak.
 
-- **Radial power spectrum**: radial average of |FFT|²; characteristic scale = 1/k_peak.  
+- **Power scale (pixels)**  
+  - Definition: characteristic scale from radial power spectrum: N / k_mean, where k_mean is the first moment of power over radial k (excluding DC).  
+  - Implementation: FFT2 of demeaned patch → |FFT|² → radial bin → k_mean = Σ(k·P(k))/ΣP(k) → power_scale_px = N/k_mean.  
+  - One scalar per image; finer grain → smaller power_scale_px.
+
+### Optional (not implemented)
+
 - **Variogram**: γ(Δ) = E[(I(x)−I(x+Δ))²] vs |Δ|; scale where γ levels off.
 
 ---
@@ -66,7 +76,7 @@ Quantify paper "tooth" (depth/contrast) and coarseness (grain scale) from unifor
 1. **Load** — Discover all PNGs in the given directory; load each with a standard image reader; extract one channel; center-crop to patch size (e.g. 600×600).  
 2. **Depth** — For each patch: compute RMS contrast and mean gradient magnitude.  
 3. **Coarseness** — For each patch: compute 2D ACF, normalize, radial average, then correlation length ξ.  
-4. **Export** — Emit a table (stdout and/or CSV): paper name (filename stem), `correlation_length_px`, `rms_contrast`, `mean_gradient`.
+4. **Export** — Emit a table (stdout and/or CSV/ODS): paper name (filename stem), `mean_intensity`, `rms_contrast`, `mean_gradient`, `correlation_length_px`, `acf_fwhm_px`, `power_scale_px`.
 
 ---
 
