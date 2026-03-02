@@ -1,2 +1,7 @@
+import sys
+
+from .cli import run
+
+
 def main() -> None:
-    print("Hello from paper-tooth-analysis!")
+    sys.exit(run(sys.argv[1:]))
